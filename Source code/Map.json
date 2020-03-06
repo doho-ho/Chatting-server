@@ -1,0 +1,7 @@
+{
+    "MapConfig":
+    {
+        "ChannelSize":3
+    },
+    "MapData":[{"xTile":30,"yTile":30}]
+}
