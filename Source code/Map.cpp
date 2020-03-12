@@ -322,11 +322,11 @@ void tileMap::updateTile(unsigned __int64 _playerCode, int _prevXTile, int _prev
 	if (_prevXTile > xSize || _prevXTile < -1 || _destXTile > xSize || _destXTile < -1) return;
 	if (_prevYTile > ySize || _prevYTile < -1 || _destYTile > xSize || _destYTile < -1) return;
 
-	AcquireSRWLockExclusive(&Lock);
+	acquireLock();
 	deletePlayer(_playerCode, _prevXTile, _prevYTile);
 	insertPlayer(_playerCode, _destXTile, _destYTile);
 	sendUpdateMsg(_playerCode, _prevXTile, _prevYTile, _destXTile, _destYTile);
-	ReleaseSRWLockExclusive(&Lock);
+	releaseLock();
 }
 
 void tileMap::deleteTile(unsigned __int64 _playerCode, int _xTile, int _yTile)
@@ -362,8 +362,6 @@ void tileMap::setConfig(int _xSize, int _ySize)
 	xSize = _xSize;
 	ySize = _ySize;
 
-	InitializeSRWLock(&Lock);
-
 	Map = new Tile*[ySize];
 
 	for (int i = 0; i < ySize; ++i)
@@ -391,21 +389,21 @@ void tileMap::sendChatAround(int _xTile, int _yTile, Sbuf *_buf)
 
 	tileCollection Collection = getAroundTile(_xTile, _yTile);
 
-	AcquireSRWLockShared(&Lock);
+	acquireLock();
 	for (int Count = 0; Count < Collection.Count; ++Count)
 	{
 		for (auto Iter : Map[Collection.Collection[Count][0]][Collection.Collection[Count][1]].Users)
 			Server->sendMsg(Iter, _buf);
 	}
-	ReleaseSRWLockShared(&Lock);
+	releaseLock();
 }
 
 void tileMap::acquireLock()
 {
-	AcquireSRWLockExclusive(&Lock);
+	Lock.lock();
 }
 
 void tileMap::releaseLock()
 {
-	ReleaseSRWLockExclusive(&Lock);
+	Lock.unlock();
 }

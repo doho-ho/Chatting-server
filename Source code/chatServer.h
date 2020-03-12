@@ -64,11 +64,12 @@ private:
 	memoryPool<player> playerPool;
 	Map *map;
 
-	SRWLOCK playerListLock;
+	std::recursive_mutex playerListLock;
 
 private:
 	void loadConfigData(const char *_configData);
-
+	void acquireLock();
+	void releaseLock();
 	// Logic proccess function
 	void	recv_connectReq(unsigned __int64 _index, Sbuf *_buf);
 	void	recv_playerMove(unsigned __int64 _index, Sbuf *_buf);

@@ -12,7 +12,6 @@ chatServer::chatServer(const char *_configData)
 	terminateFlag = false;
 
 	playerList = new std::map<unsigned __int64, player*>;
-	InitializeSRWLock(&playerListLock);
 
 	HANDLE hThread;
 	hThread = (HANDLE)_beginthreadex(NULL, 0, monitorThread, (LPVOID)this, 0, 0);
@@ -52,6 +51,16 @@ void chatServer::loadConfigData(const char *_configData)
 
 	rapidjson::Value &mapName = Doc["MapFileName"];
 	mapJsonName = mapName.GetString();
+}
+
+void chatServer::acquireLock()
+{
+	playerListLock.lock();
+}
+
+void chatServer::releaseLock()
+{
+	playerListLock.unlock();
 }
 
 unsigned __stdcall chatServer::monitorThread(LPVOID _data)
@@ -308,7 +317,7 @@ Sbuf* chatServer::packet_deletePlayer(unsigned __int64 _Index)
 player* chatServer::get_playerData(unsigned __int64 _playerCode)
 {
 	player* retPtr = nullptr;
-	AcquireSRWLockShared(&playerListLock);
+	acquireLock();
 	std::map<unsigned __int64, player*>::iterator Iter = playerList->find(_playerCode);
 	if (Iter == playerList->end())
 		retPtr = nullptr;
@@ -317,7 +326,7 @@ player* chatServer::get_playerData(unsigned __int64 _playerCode)
 		retPtr = Iter->second;
 		retPtr->acquireUseCount();
 	}
-	ReleaseSRWLockShared(&playerListLock);
+	releaseLock();
 	return retPtr;
 }
 
@@ -352,14 +361,14 @@ void chatServer::OnClientJoin(unsigned __int64 _index)
 	User->setInit();
 	User->setPlayerCode(_index);
 
-	AcquireSRWLockExclusive(&playerListLock);
+	acquireLock();
 	playerList->insert(std::pair<unsigned __int64, player*>(_index, User));
-	ReleaseSRWLockExclusive(&playerListLock);
+	releaseLock();
 }
 
 void chatServer::OnClientLeave(unsigned __int64 _index)
 {
-	AcquireSRWLockExclusive(&playerListLock);
+	acquireLock();
 	std::map<unsigned __int64, player*>::iterator Iter = playerList->find(_index);
 	if (Iter != playerList->end())
 	{
@@ -370,7 +379,7 @@ void chatServer::OnClientLeave(unsigned __int64 _index)
 		playerList->erase(Iter);
 		playerPool.Free(User);
 	}
-	ReleaseSRWLockExclusive(&playerListLock);
+	releaseLock();
 }
 
 bool chatServer::OnConnectionRequest(char *_ip, unsigned int _port)

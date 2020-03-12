@@ -32,7 +32,7 @@ private:
 	int mapNum;
 	int chNum;
 
-	SRWLOCK Lock;
+	std::recursive_mutex Lock;
 private:
 	void deletePlayer(unsigned __int64 _playerCode, int _xTile, int _yTile);
 	void insertPlayer(unsigned __int64 _playerCode, int _xTile, int _yTile);
