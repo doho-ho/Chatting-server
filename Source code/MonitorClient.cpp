@@ -62,7 +62,7 @@ Sbuf* monitorClient::makeMsgLogin()
 	*buf << (short)monitorProtocol::requestClientLogin;
 	*buf << (short)monitorClientType::Client;
 	std::string clientName = "Chatting Server";
-	*buf << (unsigned char)clientName.size();
+	*buf << (unsigned int)clientName.size();
 	buf->push(clientName.data(), clientName.size());
 	*buf << (unsigned char)dataSize;
 
@@ -153,4 +153,10 @@ void monitorClient::sendData(int arg, ...)
 	buf->Free();
 
 	Data.clear();
+}
+
+void monitorClient::TPS()
+{
+	onTPS();
+	setTPS();
 }

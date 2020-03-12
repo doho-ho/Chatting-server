@@ -36,6 +36,7 @@ public:
 	monitorClient(const char *_configFileName);
 	~monitorClient();
 
+	void TPS();
 protected:
 	virtual void onClientJoin(void);
 	virtual void onClientLeave(void);

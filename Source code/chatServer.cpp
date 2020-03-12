@@ -92,6 +92,7 @@ unsigned __stdcall chatServer::monitorThread(LPVOID _data)
 		printf("   playerPool Alloc : %d  /  used : %d\n", server->playerPool.getAllocCount(), server->playerPool.getUsedCount());
 		printf("   Sbuf Alloc : %d  |  Used : %d\n", Sbuf::pool->getAllocCount(), Sbuf::pool->getUsedCount());
 		printf("\n\n");
+		server->TPS();
 		server->Monitor->sendData(3, server->getAcceptTPS(), server->getRecvTPS(), server->getSendTPS());
 		server->setTPS();
 
@@ -334,7 +335,7 @@ positionData chatServer::get_Position()
 {
 	positionData Data;
 
-	Data.CH = rand() % 3;
+	Data.CH = rand() % 1;
 	Data.mapNo = 0;
 	Data.xTile = rand() % 30;
 	Data.yTile = rand() % 30;
@@ -352,6 +353,11 @@ void chatServer::set_Position(player *_User, positionData _Data)
 void chatServer::sendMsg(unsigned __int64 _index, Sbuf *_buf)
 {
 	SendPacket(_index, _buf);
+}
+
+void chatServer::TPS()
+{
+	Monitor->TPS();
 }
 
 // Virtual function
