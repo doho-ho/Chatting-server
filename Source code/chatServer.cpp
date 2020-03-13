@@ -16,6 +16,10 @@ chatServer::chatServer(const char *_configData)
 	HANDLE hThread;
 	hThread = (HANDLE)_beginthreadex(NULL, 0, monitorThread, (LPVOID)this, 0, 0);
 	CloseHandle(hThread);
+
+	handleArray = new HANDLE[contentThreadCount];
+	for(int i=0;i<contentThreadCount;++i)
+		handleArray[i] = (HANDLE)_beginthreadex(NULL, 0, contentThread, (LPVOID)this, 0, 0);
 	Start(IP, Port, workerThreadCount, nagleOpt, maxClient);
 }
 
@@ -39,6 +43,7 @@ void chatServer::loadConfigData(const char *_configData)
 	workerThreadCount = Val["Workerthread_count"].GetUint();
 	maxClient = Val["Max_client_count"].GetUint();
 	nagleOpt = Val["Nagle_option"].GetBool();
+	contentThreadCount = Val["Content_thread_count"].GetUint();
 
 	rapidjson::Value &Key = Doc["Encryption_key"];
 	assert(arry.IsArry());
@@ -75,7 +80,6 @@ unsigned __stdcall chatServer::monitorThread(LPVOID _data)
 
 	while (!server->terminateFlag)
 	{
-
 		printf("---------------------------------------------------\n");
 		printf(" Chatting Server (Ver1.0)\n");
 		printf("---------------------------------------------------\n");
@@ -91,12 +95,59 @@ unsigned __stdcall chatServer::monitorThread(LPVOID _data)
 		printf("   playerList count : %d  |  Now connection : %d \n", server->playerList->size(), server->GetClientCount());
 		printf("   playerPool Alloc : %d  /  used : %d\n", server->playerPool.getAllocCount(), server->playerPool.getUsedCount());
 		printf("   Sbuf Alloc : %d  |  Used : %d\n", Sbuf::pool->getAllocCount(), Sbuf::pool->getUsedCount());
+		printf("   Content TPS : %d \n", server->contentTPS);
 		printf("\n\n");
 		server->TPS();
 		server->Monitor->sendData(3, server->getAcceptTPS(), server->getRecvTPS(), server->getSendTPS());
 		server->setTPS();
-
+		InterlockedExchange(&(server->contentTPS), 0);
 		Sleep(1000);
+	}
+
+	return 0;
+}
+
+unsigned __stdcall chatServer::contentThread(LPVOID _Data)
+{
+	chatServer *Server = static_cast<chatServer*>(_Data);
+	memoryPool<contentMsg> &msgPool = Server->msgPool;
+	boost::lockfree::queue<contentMsg*> &Queue = Server->msgQueue;
+
+	contentMsg *Msg = nullptr;
+	LONG &Counter = Server->contentTPS;
+	int Count = 0;
+	while (!Server->terminateFlag)
+	{
+		Count = 0;
+		while (Count < 100)
+		{
+			Count++;
+			Msg = nullptr;
+			if (Queue.empty()) break;
+			if (!Queue.pop(Msg)) break;
+
+			switch (Msg->Type)
+			{
+			case chatProtocol::c2s_playerData_Req:
+				Server->recv_dataReq(Msg->Index);
+				break;
+			case chatProtocol::c2s_playerMove:
+				Server->recv_playerMove(Msg->Index, Msg->buf);
+				break;
+			case chatProtocol::c2s_playerCHChange:
+				Server->recv_playerChMove(Msg->Index, Msg->buf);
+				break;
+			case chatProtocol::c2s_Chatting:
+				Server->recv_Chatting(Msg->Index, Msg->buf);
+				break;
+			default:
+				break;
+			}
+			Msg->buf->Free();
+			msgPool.Free(Msg);
+			InterlockedIncrement(&Counter);
+		}
+		Sleep(10);
 	}
 
 	return 0;
@@ -398,25 +449,17 @@ void chatServer::OnRecv(unsigned __int64 _index, Sbuf *_buf)
 {
 	short Type;
 	*_buf >> Type;
-	switch (Type)
-	{
-	case chatProtocol::c2s_Login_Req:
+
+	if(Type == chatProtocol::c2s_Login_Req)
 		recv_connectReq(_index, _buf);
-		break;
-	case chatProtocol::c2s_playerData_Req:
-		recv_dataReq(_index);
-		break;
-	case chatProtocol::c2s_playerMove:
-		recv_playerMove(_index, _buf);
-		break;
-	case chatProtocol::c2s_playerCHChange:
-		recv_playerChMove(_index, _buf);
-		break;
-	case chatProtocol::c2s_Chatting:
-		recv_Chatting(_index, _buf);
-		break;
-	default:
-		break;
+	else
+	{
+		contentMsg *Msg = msgPool.Alloc();
+		Msg->Index = _index;
+		Msg->buf = _buf;
+		Msg->buf->addRef();
+		Msg->Type = static_cast<chatProtocol::Protocol>(Type);
+		msgQueue.push(Msg);
 	}
 }
 

@@ -32,7 +32,6 @@ private:
 	int mapNum;
 	int chNum;
 
-	std::recursive_mutex Lock;
 private:
 	void deletePlayer(unsigned __int64 _playerCode, int _xTile, int _yTile);
 	void insertPlayer(unsigned __int64 _playerCode, int _xTile, int _yTile);
@@ -57,9 +56,6 @@ public:
 	void setMapNo(int _mapNo);
 
 	void sendChatAround(int _xTile, int _yTile, Sbuf *_buf);
-
-	void acquireLock();
-	void releaseLock();
 };
 
 class Channel

@@ -5,6 +5,13 @@ struct positionData
 	int CH, mapNo, xTile, yTile;
 };
 
+struct contentMsg
+{
+	unsigned __int64 Index;
+	chatProtocol::Protocol Type;
+	Sbuf *buf;
+};
+
 class player
 {
 private:
@@ -47,6 +54,10 @@ private:
 	unsigned short workerThreadCount;
 	bool	nagleOpt;
 	unsigned int maxClient;
+	unsigned short contentThreadCount;
+
+	// content Thread HANDLE
+	HANDLE *handleArray;
 
 	// Monitor config file name
 	std::string monitorJsonName;
@@ -60,11 +71,16 @@ private:
 	// Control value
 	bool	terminateFlag;
 
+	boost::lockfree::queue<contentMsg*> msgQueue;
 	std::map<unsigned __int64, player*> *playerList;
+	memoryPool<contentMsg> msgPool;
 	memoryPool<player> playerPool;
 	Map *map;
 
 	std::recursive_mutex playerListLock;
+
+	// Monitor 
+	LONG contentTPS;
 
 private:
 	void loadConfigData(const char *_configData);
@@ -100,12 +116,14 @@ public:
 
 public:
 	static unsigned __stdcall monitorThread(LPVOID _data);
+	static unsigned __stdcall contentThread(LPVOID _Data);
 
 	void sendMsg(unsigned __int64 _index, Sbuf *_buf);
 
 	Sbuf* packet_createPlayer(unsigned __int64 _playerCode, int _CH, int _mapNo, int _xTile, int _yTile);
 	Sbuf* packet_deletePlayer(unsigned __int64 _Index);
 
+	void TPS();
 public:
 	void OnClientJoin(unsigned __int64 _index);							// accept -> 접속처리 완료 후 호출
 	void OnClientLeave(unsigned __int64 _index);						// disconnect 후 호출

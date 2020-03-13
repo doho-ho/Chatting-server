@@ -55,25 +55,17 @@ void Map::updateCH(player *_User, int _CH, int _mapNo, int _xTile, int _yTile)
 	if (Data.prevCH != Data.destCH)
 	{
 		if (Data.prevCH != -1)
-		{
-			CH[Data.prevCH].acquireLock(Data.prevMapNo);
 			CH[Data.prevCH].deleteMap(playerCode, Data.prevMapNo, Data.prevXTile, Data.prevYTile);
-		}
+
 		if (Data.destCH != -1)
-		{
-			CH[Data.destCH].acquireLock(Data.destMapNo);
 			CH[Data.destCH].insertMap(playerCode, Data.destMapNo, Data.destXTile, Data.destYTile);
-		}
+
 		if (Data.prevCH != -1)
-		{
 			CH[Data.prevCH].sendPacket(playerCode, Data.prevMapNo, Data, false);
-			CH[Data.prevCH].releaseLock(Data.prevMapNo);
-		}
+
 		if (Data.destCH != -1)
-		{
 			CH[Data.destCH].sendPacket(playerCode, Data.destMapNo, Data, true);
-			CH[Data.destCH].releaseLock(Data.destMapNo);
-		}
+
 	}
 	else
 		CH[Data.destCH].updateMap(playerCode, Data);
@@ -125,15 +117,11 @@ void Channel::updateMap(unsigned __int64 _playerCode, directionData _Data)
 
 	if (_Data.prevMapNo != _Data.destMapNo)
 	{
-		Map[_Data.prevMapNo].acquireLock();
-		Map[_Data.destMapNo].acquireLock();
 		Map[_Data.prevMapNo].deleteTile(_playerCode, _Data.prevXTile, _Data.prevYTile);
 		Map[_Data.destMapNo].insertTile(_playerCode, _Data.destXTile, _Data.destXTile);
 
 		Map[_Data.prevMapNo].sendPacket(_playerCode, _Data, false);
 		Map[_Data.destMapNo].sendPacket(_playerCode, _Data, true);
-		Map[_Data.prevMapNo].releaseLock();
-		Map[_Data.destMapNo].releaseLock();
 	}
 	else
 		Map[_Data.destMapNo].updateTile(_playerCode, _Data.prevXTile, _Data.prevYTile, _Data.destXTile, _Data.destYTile);
@@ -160,16 +148,6 @@ void Channel::sendChatAround(int _mapNo, int _xTile, int _yTile, Sbuf *_buf)
 void Channel::sendPacket(unsigned __int64 _playerCode, int _mapNo, directionData _Data, bool _insertFlag)
 {
 	Map[_mapNo].sendPacket(_playerCode, _Data, _insertFlag);
-}
-
-void Channel::acquireLock(int _mapNo)
-{
-	Map[_mapNo].acquireLock();
-}
-
-void Channel::releaseLock(int _mapNo)
-{
-	Map[_mapNo].releaseLock();
 }
 
 tileMap::~tileMap()
@@ -322,11 +300,9 @@ void tileMap::updateTile(unsigned __int64 _playerCode, int _prevXTile, int _prev
 	if (_prevXTile > xSize || _prevXTile < -1 || _destXTile > xSize || _destXTile < -1) return;
 	if (_prevYTile > ySize || _prevYTile < -1 || _destYTile > xSize || _destYTile < -1) return;
 
-	acquireLock();
 	deletePlayer(_playerCode, _prevXTile, _prevYTile);
 	insertPlayer(_playerCode, _destXTile, _destYTile);
 	sendUpdateMsg(_playerCode, _prevXTile, _prevYTile, _destXTile, _destYTile);
-	releaseLock();
 }
 
 void tileMap::deleteTile(unsigned __int64 _playerCode, int _xTile, int _yTile)
@@ -389,21 +365,9 @@ void tileMap::sendChatAround(int _xTile, int _yTile, Sbuf *_buf)
 
 	tileCollection Collection = getAroundTile(_xTile, _yTile);
 
-	acquireLock();
 	for (int Count = 0; Count < Collection.Count; ++Count)
 	{
 		for (auto Iter : Map[Collection.Collection[Count][0]][Collection.Collection[Count][1]].Users)
 			Server->sendMsg(Iter, _buf);
 	}
-	releaseLock();
-}
-
-void tileMap::acquireLock()
-{
-	Lock.lock();
-}
-
-void tileMap::releaseLock()
-{
-	Lock.unlock();
 }
