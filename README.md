@@ -15,7 +15,8 @@ IOCP기반 멀티스레드 채팅 서버
   단점 : SRWLOCK에 비해 속도가 느림
 
 # 2020.03.14
-  - contentThread 추가하여 login 제외 프로세스 처리
-  이유 : virtual client로 테스트 응답시간이 1000ms 이상 지연되는 경우 존재.
-  결과 : 최대 3000명으로 평균 응답시간 1000ms 이하 -> 최대 4000명으로 성능 상승
-        하지만 virtual client 응답시간이 간혹 1000ms 이상으로 튀는 것은 virtual client 부하
+  1. contentThread 추가하여 login 제외 프로세스 처리
+    이유 : virtual client로 테스트 응답시간이 1000ms 이상 지연되는 경우 존재.
+    결과 : 최대 3000명으로 평균 응답시간 1000ms 이하 -> 최대 4000명으로 성능 상승
+          하지만 virtual client 응답시간이 간혹 1000ms 이상으로 튀는 것은 virtual client 부하
+  2. 위 수정으로 인한 class diagram 
